@@ -1,3 +1,5 @@
+CONFIG=localmodconfig  # or config
+
 RT_URL=$(lynx --dump -listonly https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/ \
          | grep  $(lynx --dump -listonly https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/ \
          | grep -P "\d+.\d+" -o -A 0 | sort -V | tail -1) | grep -P "https.*\/\Z" -o)
@@ -31,9 +33,9 @@ CWD=$(pwd)
 cd kernel-src/
 cd $LINUX_DIR
 
-patch -p1 < <(gunzip -c ../patch-4.18.7-rt5.patch.gz)
+patch -p1 < <(gunzip -c ../$PATCH)
 
-cp /boot/config-$(uname -r) .config && make oldconfig
+cp /boot/config-$(uname -r) .config && make $CONFIG
 
 make bzImage
 
