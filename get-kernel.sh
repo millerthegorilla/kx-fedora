@@ -1,3 +1,6 @@
+CONFIG=localmodconfig # or oldconfig
+CLEAN=true
+
 RT_URL=$(lynx --dump -listonly https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/ \
          | grep  $(lynx --dump -listonly https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/ \
          | grep -P "\d+.\d+" -o -A 0 | sort -V | tail -1) | grep -P "https.*\/\Z" -o)
@@ -24,16 +27,28 @@ tar -xf $LINUX -C kernel-src/ --checkpoint-action=ttyout="%{}T bytes of $FILE_SI
 
 mv $PATCH kernel-src/
 
-sudo dnf install make automake gcc gcc-c++ kernel-devel openssl-devel
-sudo dnf install fakeroot ncurses-devel patch flex elfutils-libelf-devel
-
 CWD=$(pwd)
+
+mkdir tmp && cd tmp
+
+sudo dnf install -y make automake gcc gcc-c++ kernel-devel openssl-devel \
+		    fakeroot ncurses-devel patch flex elfutils-libelf-devel \
+		    --downloadonly --destdir=./
+
+sudo dnf install -y *.rpm
+
+cd $CWD
+
 cd kernel-src/
 cd $LINUX_DIR
 
-patch -p1 < <(gunzip -c ../patch-4.18.7-rt5.patch.gz)
+patch -p1 < <(gunzip -c ../$PATCH)
 
-cp /boot/config-$(uname -r) .config && make oldconfig
+cp /boot/config-$(uname -r) .config && make $CONFIG
+
+if [ $CONFIG = "localmodconfig" ]; then
+	make menuconfig
+fi
 
 make bzImage
 
@@ -42,3 +57,10 @@ make modules
 sudo make modules_install
 
 sudo make install
+
+if [ $CLEAN = true ]; then
+	cd $CWD/tmp
+	if [ "$(ls)" != "" ]; then
+		sudo dnf -y remove *.rpm
+	fi
+fi
